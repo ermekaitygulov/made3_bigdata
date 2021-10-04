@@ -1,0 +1,24 @@
+'mkdir', 'touchz' block
+1) hdfs dfs -ls foo
+2) hdfs dfs -mkdir -p /foo/foo1/foo2
+3) Папка, в которую перемещаются файлы
+   после команды rm и где лежат некоторое
+   время. Чтобы файл удалился сразу нужно
+   воспользоваться флагом -skipTrash:
+   hdfs dfs -rm -skipTrash
+4) hdfs dfs -touchz /foo/foo1/foo2/empty.txt
+5) hdfs dfs -rm /foo/foo1/foo2/empty.txt
+6) hdfs dfs -rm -r /foo
+
+'put', 'cat', 'tail', 'cp' block
+1) echo 'smth' > smth.txt && hdfs dfs -put smth.txt /
+2) hdfs  dfs -cat /smth.txt
+3) hdfs  dfs -tail /smth.txt
+4) hdfs  dfs -head /smth.txt
+5) hdfs dfs -mkdir /smth_new/ && hdfs dfs -cp -f /smth.txt /smth_new/
+
+'setrep' block
+2) SECONDS=0 ; hdfs dfs -setrep -w 2 /smth.txt ; echo $SECONDS
+   на это ушло ~11 секунд (вернуть значение к 3 тоже заняло ~11 секунд)
+3) hdfs fsck /smth.txt -files -blocks -locations
+4) hdfs fsck -blockId BP-2093998894
