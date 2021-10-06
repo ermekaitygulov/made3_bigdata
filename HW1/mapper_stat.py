@@ -1,3 +1,4 @@
+#!/usr/bin/python3
 import sys
 
 
@@ -51,7 +52,7 @@ def check_inquote_eol(line):
 
 def fix_line(line, tmp):
     if tmp:
-        line = f'{tmp}{line}'
+        line = '{}{}'.format(tmp, line)
         tmp = None
     line = remove_inquote_comma(line)
     if check_inquote_eol(line):
@@ -61,6 +62,7 @@ def fix_line(line, tmp):
 
 
 if __name__ == '__main__':
+    PRICE_IDX = 9
     mean = 0
     count = 0
     var = 0
@@ -68,18 +70,18 @@ if __name__ == '__main__':
     tmp = None
     for i, raw_line in enumerate(sys.stdin):
         line = raw_line.strip()
-        if i == 0:
-            price_idx = find_col_idx(header=line, col='price')
-            continue
         line, tmp = fix_line(line, tmp)
         if line is None:
             continue
 
-        price = line.split(',')[price_idx]
-        price = int(price)
+        price = line.split(',')[PRICE_IDX]
+        try:
+            price = int(price)
+        except ValueError:
+            continue
         new_mean, new_count = update_mean(mean, count, price)
         var = update_var(mean, var, count, price)
         mean, count = new_mean, new_count
-    print(f'{mean}\t{var}\t{count}')
+    print('{}\t{}\t{}'.format(mean, var, count))
 
 

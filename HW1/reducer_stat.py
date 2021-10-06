@@ -1,3 +1,4 @@
+#!/usr/bin/python3
 import sys
 
 
@@ -24,5 +25,5 @@ if __name__ == '__main__':
         new_mean, new_count = update_mean(mean, count, loc_mean, loc_count)
         var = update_var(mean, var, count, loc_mean, loc_var, loc_count)
         mean, count = new_mean, new_count
-    print(f'map_reduce mean: {mean}')
-    print(f'map_reduce var: {var}')
+    print('map_reduce mean: {}'.format(mean))
+    print('map_reduce var: {}'.format(var))
