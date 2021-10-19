@@ -1,0 +1,1 @@
+sudo docker cp artists.csv docker-hadoop-hive-parquet_hive-server_1:/opt
