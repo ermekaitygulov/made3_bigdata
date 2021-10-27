@@ -1,6 +1,7 @@
 import breeze.linalg.DenseMatrix
 import linreg._
 
+import java.io.{File, PrintWriter}
 import scala.collection.mutable.ArrayBuffer
 import scala.io.Source
 
@@ -13,7 +14,7 @@ object main {
     }
   }
 
-  def readInsuranceDataset(path: String):(Array[Array[Double]], Array[Double]) = {
+  def readInsuranceDataset(path: String):(DenseMatrix[Double], DenseMatrix[Double]) = {
     val bufferedSource = Source.fromFile(path)
     var step = 0
     val feature = new ArrayBuffer[Array[Double]]()
@@ -38,20 +39,34 @@ object main {
     println(s"${feature.size}")
     val featArray = feature.toArray
     val targetArray = target.toArray
-    (featArray, targetArray)
-  }
-
-  def main(args: Array[String]): Unit = {
-    val projPath: String = "/home/airan/Projects/made/made3_bigdata/hw3"
-    val dataPath: String = projPath + "/insurance.csv"
-    val (featArray, targetArray) = readInsuranceDataset(dataPath)
     val featMatrix: DenseMatrix[Double] = DenseMatrix(featArray:_*)
     val targetMatrix: DenseMatrix[Double] = DenseMatrix(targetArray:_*)
 
+    (featMatrix, targetMatrix)
+  }
+
+
+  def writeToFile(p: String, s: String): Unit = {
+    val pw = new PrintWriter(new File(p))
+    try pw.write(s) finally pw.close()
+  }
+
+  def main(args: Array[String]): Unit = {
+    val projPath: String = "/home/airan/Projects/made/made3_bigdata/HW3"
+    val trainPath: String = projPath + "/train.csv"
+    val testPath: String = projPath + "/test.csv"
+    val (trainFeatMatrix, trainTargetMatrix) = readInsuranceDataset(trainPath)
+    val (testFeatMatrix, testTargetMatrix) = readInsuranceDataset(testPath)
+
     val model = LinearRegression()
-    model.fit(featMatrix, targetMatrix)
-    val prediction = model.predict(featMatrix)
-    println(rmseScore(targetMatrix, prediction))
-    println(r2Score(targetMatrix, prediction))
+    model.fit(trainFeatMatrix, trainTargetMatrix)
+    val prediction = model.predict(testFeatMatrix)
+    val rmse = rmseScore(testTargetMatrix, prediction)
+    val r2 = r2Score(testTargetMatrix, prediction)
+    val rmseMessage = "test rmse: " + rmse
+    val r2Message = "test r2: " + r2
+    println(rmseMessage)
+    println(r2Message)
+    writeToFile("test_score.txt", rmseMessage + "\n" + r2Message)
   }
 }
