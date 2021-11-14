@@ -1,4 +1,4 @@
-name := "HW3"
+name := "hw3"
 
 version := "0.1"
 
