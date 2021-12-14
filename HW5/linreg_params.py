@@ -1,18 +1,32 @@
 from pyspark.ml.param.shared import Params, TypeConverters, Param, HasInputCol, HasOutputCol
 
 
-class LinRegEstimatorParams(HasInputCol, HasOutputCol):
+class HasTargetCol(Params):
+
+    targetCol = Param(Params._dummy(), "targetCol", "target column name.", typeConverter=TypeConverters.toString)
+
+    def __init__(self):
+        super(HasTargetCol, self).__init__()
+
+    def getTargetCol(self):
+        return self.getOrDefault(self.targetCol)
+
+    def setTargetCol(self, value):
+        return self._set(targetCol=value)
+
+
+class LinRegEstimatorParams(HasInputCol, HasOutputCol, HasTargetCol):
 
     lr = Param(
         Params._dummy(),
-        "learning_rate",
-        "learning_rate",
+        "lr",
+        "lr",
         typeConverter=TypeConverters.toFloat
     )
     step = Param(
         Params._dummy(),
-        "sgd steps",
-        "sgd steps",
+        "step",
+        "step",
         typeConverter=TypeConverters.toInt
     )
 
