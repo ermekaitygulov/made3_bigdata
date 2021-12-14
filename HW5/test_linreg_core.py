@@ -1,6 +1,6 @@
 import pytest
 import numpy as np
-from linear_regression import NumpyLinReg as np_lr
+from linreg_core import NumpyLinReg as np_lr
 
 
 @pytest.fixture
