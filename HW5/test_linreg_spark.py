@@ -36,8 +36,8 @@ def test_lin_reg_model_predict_correct(spark):
 
 def test_lin_reg_model_can_fit_test_data(test_data, spark):
     lr_estimator = LinRegEstimator(
-        lr=0.1,
-        step=100
+        lr=1.,
+        step=10
     )
     lr_estimator = (lr_estimator
                     .setInputCol('features')
@@ -50,7 +50,7 @@ def test_lin_reg_model_can_fit_test_data(test_data, spark):
     lr_model = lr_estimator.fit(spark_data)
     weights = lr_model.getWeights()
     bias = lr_model.getBias()
-    assert np.isclose(weights, TARGET_WEIGHTS)
-    assert np.isclose(bias)
+    assert all(np.isclose(weights, TARGET_WEIGHTS))
+    assert np.isclose(bias, 0)
 
 

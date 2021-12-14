@@ -2,11 +2,28 @@ import numpy as np
 from pyspark.ml import Estimator, Model
 from pyspark.ml.util import DefaultParamsReadable, DefaultParamsWritable
 from pyspark import keyword_only
-from pyspark.sql.types import FloatType
+from pyspark.sql.types import ArrayType, FloatType, StructType, StructField
 from pyspark.sql.functions import udf
+from pyspark.sql import functions as SF
 
 from linreg_params import LinRegModelParams, LinRegEstimatorParams
 from linreg_core import NumpyLinReg
+
+
+def compute_grad_udf(x, y, weights, bias, lr=0.1):
+    x = np.array([x])
+    y = np.array(y)
+    weights = np.array(weights)
+    grad_w, grad_b = NumpyLinReg.compute_grad(x, y, weights, bias, lr)
+    grad_w = grad_w.tolist()
+    grad_b = grad_b.tolist()
+    return [grad_w, grad_b]
+
+
+compute_grad_udf = udf(compute_grad_udf, StructType([
+    StructField('weights', ArrayType(FloatType())),
+    StructField('bias', FloatType())
+]))
 
 
 class LinRegEstimator(Estimator, LinRegEstimatorParams, DefaultParamsReadable, DefaultParamsWritable):
@@ -25,18 +42,28 @@ class LinRegEstimator(Estimator, LinRegEstimatorParams, DefaultParamsReadable, D
         x = self.getInputCol()
         y = self.getTargetCol()
         data_shape = dataset.count()
-        x_example = dataset.select(x).limit(2).toPandas().values
+        x_example = dataset.select(x).limit(1).toPandas().values[0][0]
 
-        weights_bias = NumpyLinReg.init_weights(x_example)
+        weights_bias = NumpyLinReg.init_weights(np.array(x_example))
         for s in range(self.getStep()):
-            grad = dataset.select(NumpyLinReg.compute_grad_udf(x, y, *weights_bias, self.getLearningRate()))
-            grad = grad.groupBy().sum().collect()[0][0]
-            weights_bias = NumpyLinReg.sgd_step(*grad, *weights_bias, data_shape)
+            weights, bias = weights_bias
+            grad = dataset.select(compute_grad_udf(
+                SF.col(x), SF.col(y),
+                SF.array(*[SF.lit(w.tolist()[0]) for w in weights]),
+                SF.lit(bias),
+                SF.lit(self.getLearningRate())
+            ).alias('grad')).select(*[SF.col('grad.weights').getItem(i).alias(f'w_{i}') for i, _ in enumerate(weights)], 'grad.bias')
+            grad = grad.select(*[SF.sum(col) for col in grad.columns]).collect()[0]
+            grad_w, grad_b = grad[:3], grad[-1]
+            weights_bias = NumpyLinReg.sgd_step(np.array(grad_w)[:, None], grad_b, *weights_bias, data_shape)
 
         weights, bias = weights_bias
-        weights = weights.tolist()
-        bias = bias.tolist()
-        lr_model = LinRegModel(weights, bias)
+        weights = weights.squeeze().tolist()
+        bias = bias
+        lr_model = LinRegModel(
+            weights=weights,
+            bias=bias
+        )
         return lr_model
 
 
@@ -65,4 +92,10 @@ class LinRegModel(Model, LinRegModelParams, DefaultParamsReadable, DefaultParams
         x = np.array(x)
         prediction = weights @ x + bias
         return prediction.tolist()
+
+
+def to_udf(spark_type):
+    def udf_wrapper(func):
+        return udf(func, spark_type)
+    return udf_wrapper
 
