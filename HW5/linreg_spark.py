@@ -46,18 +46,34 @@ class LinRegEstimator(Estimator, LinRegEstimatorParams, DefaultParamsReadable, D
 
         weights_bias = NumpyLinReg.init_weights(np.array(x_example))
         for s in range(self.getStep()):
-            weights, bias = weights_bias
-            grad = dataset.select(compute_grad_udf(
-                SF.col(x), SF.col(y),
-                SF.array(*[SF.lit(w.tolist()[0]) for w in weights]),
-                SF.lit(bias),
-                SF.lit(self.getLearningRate())
-            ).alias('grad')).select(*[SF.col('grad.weights').getItem(i).alias(f'w_{i}') for i, _ in enumerate(weights)], 'grad.bias')
-            grad = grad.select(*[SF.sum(col) for col in grad.columns]).collect()[0]
-            grad_w, grad_b = grad[:3], grad[-1]
-            weights_bias = NumpyLinReg.sgd_step(np.array(grad_w)[:, None], grad_b, *weights_bias, data_shape)
+            grad_w_b = self.compute_grad_from_dataset(dataset, x, y, *weights_bias)
+            weights_bias = NumpyLinReg.sgd_step(*grad_w_b, *weights_bias, data_shape)
 
-        weights, bias = weights_bias
+        lr_model = self.init_model(*weights_bias)
+        return lr_model
+
+    def compute_grad_from_dataset(self, dataset, x, y, weights, bias):
+        grad = dataset.select(self.compute_grad_expr(x, y, weights, bias).alias('grad'))
+        grad = grad.select(
+            *[SF.col('grad.weights').getItem(i).alias(f'w_{i}') for i, _ in enumerate(weights)],
+            'grad.bias'
+        )
+        grad = grad.select(*[SF.sum(col) for col in grad.columns]).collect()[0]
+        grad_w, grad_b = grad[:weights.shape[0]], grad[-1]
+        grad_w = np.array(grad_w)[:, None]
+        return grad_w, grad_b
+
+    def compute_grad_expr(self, x, y, weights, bias):
+        grad_expr = compute_grad_udf(
+            SF.col(x), SF.col(y),
+            SF.array(*[SF.lit(w.tolist()[0]) for w in weights]),
+            SF.lit(bias),
+            SF.lit(self.getLearningRate())
+        )
+        return grad_expr
+
+    @staticmethod
+    def init_model(weights, bias):
         weights = weights.squeeze().tolist()
         bias = bias
         lr_model = LinRegModel(
